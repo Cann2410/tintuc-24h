@@ -1,1370 +1,751 @@
-/* =========================================
-   1. DỮ LIỆU MẶC ĐỊNH
-========================================= */
+
+"use strict";
+
+/* =========================================================
+   DÂN TRÍ NEWS APP - MAIN.JS
+   - Đọc menu và bài viết từ JSON
+   - Hỗ trợ chuyên mục cha và chuyên mục con
+   - Tải lại dữ liệu JSON mới nhất
+   - Giữ bài viết trong localStorage khi cần
+   ========================================================= */
 
 const DEFAULT_MENU = [
-    { id: "home", title: "Trang chủ", type: "home" },
-    { id: "moi-nhat", title: "Mới nhất", type: "category" },
-    {
-        id: "the-gioi",
-        title: "Thế giới",
-        type: "category",
-        children: [
-            { id: "quan-su", title: "Quân sự", type: "category" },
-            { id: "phan-tich", title: "Phân tích - Bình luận", type: "category" },
-            { id: "the-gioi-do-day", title: "Thế giới đó đây", type: "category" },
-            { id: "kieu-bao", title: "Kiều bào", type: "category" }
-        ]
-    },
-    {
-        id: "thoi-su",
-        title: "Thời sự",
-        type: "category",
-        children: [
-            { id: "chinh-tri", title: "Chính trị", type: "category" },
-            { id: "giao-thong", title: "Giao thông", type: "category" },
-            { id: "moi-truong", title: "Môi trường", type: "category" },
-            { id: "nong-tren-mang", title: "Nóng trên mạng", type: "category" }
-        ]
-    },
-    { id: "phap-luat", title: "Pháp luật", type: "category" },
-    { id: "suc-khoe", title: "Sức khỏe", type: "category" },
-    { id: "doi-song", title: "Đời sống", type: "category" },
-    { id: "du-lich", title: "Du lịch", type: "category" },
-    { id: "kinh-doanh", title: "Kinh doanh", type: "category" },
-    { id: "the-thao", title: "Thể thao", type: "category" },
-    { id: "bat-dong-san", title: "Bất động sản", type: "category" },
-    { id: "giai-tri", title: "Giải trí", type: "category" },
-    { id: "giao-duc", title: "Giáo dục", type: "category" }
+  { id: "home", title: "Trang chủ", type: "home", url: "/" },
+  { id: "moi-nhat", title: "Mới nhất", type: "category", url: "/tin-moi-nhat.htm" },
+  {
+    id: "the-gioi",
+    title: "Thế giới",
+    type: "category",
+    url: "/the-gioi.htm",
+    children: [
+      { id: "quan-su", title: "Quân sự", type: "category", url: "/the-gioi/quan-su.htm" },
+      { id: "phan-tich", title: "Phân tích - Bình luận", type: "category", url: "/the-gioi/phan-tich-binh-luan.htm" }
+    ]
+  },
+  { id: "thoi-su", title: "Thời sự", type: "category", url: "/thoi-su.htm" },
+  { id: "kinh-doanh", title: "Kinh doanh", type: "category", url: "/kinh-doanh.htm" },
+  { id: "bat-dong-san", title: "Bất động sản", type: "category", url: "/bat-dong-san.htm" },
+  { id: "the-thao", title: "Thể thao", type: "category", url: "/the-thao.htm" },
+  { id: "giao-duc", title: "Giáo dục", type: "category", url: "/giao-duc.htm" },
+  { id: "suc-khoe", title: "Sức khỏe", type: "category", url: "/suc-khoe.htm" },
+  { id: "van-hoa", title: "Văn hóa", type: "category", url: "/van-hoa.htm" },
+  { id: "giai-tri", title: "Giải trí", type: "category", url: "/giai-tri.htm" },
+  { id: "phap-luat", title: "Pháp luật", type: "category", url: "/phap-luat.htm" },
+  { id: "cong-nghe", title: "Công nghệ", type: "category", url: "/cong-nghe.htm" },
+  { id: "doi-song", title: "Đời sống", type: "category", url: "/doi-song.htm" },
+  { id: "du-lich", title: "Du lịch", type: "category", url: "/du-lich.htm" },
+  { id: "dan-tri-360", title: "Dân trí 360", type: "category", url: "/dt360.htm" }
 ];
 
-const DEFAULT_POSTS = [
-    {
-        id: "dtri-20261017001",
-        title: "Loạt đề xuất mới về biển báo, khoảng cách đặt biển cảnh báo trên cao tốc",
-        slug: "loat-de-xuat-moi-ve-bien-bao-khoang-cach-dat-bien-canh-bao-tren-cao-toc",
-        excerpt: "Cục Đường bộ Việt Nam đề xuất nhiều thay đổi về biển báo, đèn tín hiệu, khoảng cách đặt biển cảnh báo và hệ thống chỉ dẫn trên đường cao tốc.",
-        content: "Cục Đường bộ Việt Nam vừa hoàn thiện bản dự thảo đề xuất quy chuẩn mới về hệ thống biển báo giao thông trên đường cao tốc.\n\nMột trong những nội dung trọng tâm là việc quy định khoảng cách tối thiểu từ biển cảnh báo đến vị trí sự cố hoặc công trường thi công trên đường cao tốc nhằm giúp tài xế chủ động giảm tốc độ an toàn.",
-        thumbnail: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop",
-        image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop",
-        author: "Văn Hưng",
-        category: "Thời sự",
-        categoryId: "thoi-su",
-        subCategory: "Giao thông",
-        subCategoryId: "giao-thong",
-        publishedAt: "2026-10-14 23:30",
-        source: "dantri.com.vn",
-        url: "https://dantri.com.vn/thoi-su/loat-de-xuat-moi.htm"
-    }
-];
+const DEFAULT_POSTS = [];
 
+const STORAGE_POSTS_KEY = "newsWebsitePosts";
+const STORAGE_MENU_KEY = "newsWebsiteMenu";
 
-/* =========================================
-   2. HÀM TIỆN ÍCH & NORMALIZE
-========================================= */
+let allPosts = [];
+let allMenu = [];
+let currentCategory = "home";
+let currentSearch = "";
 
-function normalizeCategoryId(value) {
-    return String(value || "")
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "")
-        .replace(/[đĐ]/g, "d")
-        .toLowerCase()
-        .trim()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "");
+/* ---------------------------------------------------------
+   TÌM ĐƯỜNG DẪN JSON
+   Hỗ trợ main.js ở thư mục gốc hoặc trong thư mục js/
+   --------------------------------------------------------- */
+
+function getJSONPaths(fileName) {
+  const script = document.currentScript;
+  const scriptURL = script && script.src ? script.src : "";
+  const scriptDirectory = scriptURL
+    ? new URL(".", scriptURL).pathname
+    : "";
+
+  const candidates = [
+    `./data/${fileName}`,
+    `../data/${fileName}`,
+    `${scriptDirectory}../data/${fileName}`,
+    `${scriptDirectory}data/${fileName}`
+  ];
+
+  return [...new Set(candidates)];
 }
 
-function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, char => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#39;"
-    })[char]);
-}
+async function loadJSON(fileName) {
+  const paths = getJSONPaths(fileName);
 
-function makeClickArg(value) {
-    return encodeURIComponent(String(value ?? ""));
-}
-
-// Nhận diện chuyên mục chính chính xác từ URL Dân Trí
-function detectCategoryFromUrl(url) {
-    if (!url) return null;
+  for (const path of paths) {
     try {
-        const parsed = new URL(url);
-        const pathSegments = parsed.pathname.split('/').filter(Boolean);
-        if (pathSegments.length > 0) {
-            const categorySlug = normalizeCategoryId(pathSegments[0]);
+      const url = new URL(path, window.location.href);
+      url.searchParams.set("_", String(Date.now()));
 
-            const categoryMap = {
-                "the-gioi": { category: "Thế giới", categoryId: "the-gioi" },
-                "thoi-su": { category: "Thời sự", categoryId: "thoi-su" },
-                "phap-luat": { category: "Pháp luật", categoryId: "phap-luat" },
-                "suc-khoe": { category: "Sức khỏe", categoryId: "suc-khoe" },
-                "doi-song": { category: "Đời sống", categoryId: "doi-song" },
-                "du-lich": { category: "Du lịch", categoryId: "du-lich" },
-                "kinh-doanh": { category: "Kinh doanh", categoryId: "kinh-doanh" },
-                "the-thao": { category: "Thể thao", categoryId: "the-thao" },
-                "bat-dong-san": { category: "Bất động sản", categoryId: "bat-dong-san" },
-                "giai-tri": { category: "Giải trí", categoryId: "giai-tri" },
-                "giao-duc": { category: "Giáo dục", categoryId: "giao-duc" }
-            };
+      const response = await fetch(url.toString(), {
+        cache: "no-store"
+      });
 
-            if (categoryMap[categorySlug]) {
-                return categoryMap[categorySlug];
-            }
-        }
-    } catch (e) {
-        console.warn("Không phân tích được URL:", e);
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      if (data && typeof data === "object") return data;
+    } catch (error) {
+      console.warn("Không tải được JSON:", path, error);
     }
-    return null;
+  }
+
+  return null;
 }
 
-// Chuyển ngày tháng dạng chuỗi sang Timestamp để sắp xếp chính xác bài mới nhất
-function parseDateToTime(value) {
-    if (!value) return 0;
-    const str = String(value).trim();
+/* ---------------------------------------------------------
+   CHUẨN HÓA CHUỖI VÀ ID
+   --------------------------------------------------------- */
 
-    const isoDate = new Date(str.replace(" ", "T"));
-    if (!Number.isNaN(isoDate.getTime())) {
-        return isoDate.getTime();
-    }
-
-    const match = str.match(/(?:(\d{1,2}):(\d{1,2})\s+)?(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s*[-–—]?\s*(\d{1,2}):(\d{1,2}))?/);
-    if (match) {
-        const hours = parseInt(match[1] || match[6] || 0, 10);
-        const minutes = parseInt(match[2] || match[7] || 0, 10);
-        const day = parseInt(match[3], 10);
-        const month = parseInt(match[4], 10) - 1;
-        const year = parseInt(match[5], 10);
-
-        const d = new Date(year, month, day, hours, minutes);
-        if (!Number.isNaN(d.getTime())) {
-            return d.getTime();
-        }
-    }
-
-    return 0;
+function normalizeText(value) {
+  return String(value ?? "")
+    .normalize("NFC")
+    .trim()
+    .toLocaleLowerCase("vi");
 }
 
-function normalizePost(post) {
-    if (!post || typeof post !== "object") return null;
-
-    const title = String(post.title || "").trim();
-    const id = String(post.id || post.slug || "").trim();
-
-    if (!title || !id) return null;
-
-    const detected = detectCategoryFromUrl(post.url);
-
-    const category = String(
-        post.category ||
-        post.categoryName ||
-        detected?.category ||
-        post.categoryId ||
-        "Thời sự"
-    ).trim();
-
-    const categoryId = normalizeCategoryId(
-        post.categoryId || detected?.categoryId || category
-    );
-
-    const subCategory = String(
-        post.subCategory ||
-        post.subCategoryName ||
-        ""
-    ).trim();
-
-    const subCategoryId = normalizeCategoryId(
-        post.subCategoryId || subCategory
-    );
-
-    return {
-        ...post,
-        id,
-        title,
-        slug: post.slug || id,
-        category,
-        categoryId,
-        subCategory,
-        subCategoryId,
-        excerpt: String(post.excerpt || "")
-            .trim()
-            .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, ""),
-        content: String(post.content || ""),
-        author: String(post.author || "").trim(),
-        publishedAt: post.publishedAt || post.date || "",
-        thumbnail: post.thumbnail || post.image || "",
-        image: post.image || post.thumbnail || "",
-        url: String(post.url || ""),
-        source: String(post.source || "dantri.com.vn")
-    };
+function slugify(value) {
+  return String(value ?? "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
+
+function normalizeId(value) {
+  return slugify(value);
+}
+
+function getArrayFromJSON(data, key) {
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data[key])) return data[key];
+  return [];
+}
+
+/* ---------------------------------------------------------
+   CHUẨN HÓA MENU
+   Giữ tên chuyên mục trong JSON; tạo ID phụ để so sánh.
+   --------------------------------------------------------- */
 
 function normalizeMenuItem(item) {
-    if (!item || typeof item !== "object") return null;
+  if (!item || typeof item !== "object") return null;
 
-    const title = String(
-        item.title || item.name || item.id || ""
-    ).trim();
+  const title = String(
+    item.title ?? item.name ?? item.label ?? item.id ?? ""
+  ).trim();
 
-    const id = normalizeCategoryId(item.id || title);
+  if (!title) return null;
 
-    if (!title || !id) return null;
+  const id = String(item.id ?? slugify(title)).trim();
 
-    return {
-        ...item,
-        id,
-        title,
-        type: item.type || (id === "home" ? "home" : "category"),
-        children: Array.isArray(item.children)
-            ? item.children
-                .map(child => {
-                    if (!child || typeof child !== "object") return null;
+  const childrenSource = Array.isArray(item.children)
+    ? item.children
+    : Array.isArray(item.subCategories)
+      ? item.subCategories
+      : [];
 
-                    const childTitle = String(
-                        child.title || child.name || child.id || ""
-                    ).trim();
-
-                    const childId = normalizeCategoryId(
-                        child.id || childTitle
-                    );
-
-                    if (!childTitle || !childId) return null;
-
-                    return {
-                        ...child,
-                        id: childId,
-                        title: childTitle,
-                        type: child.type || "category"
-                    };
-                })
-                .filter(Boolean)
-            : []
-    };
+  return {
+    ...item,
+    id,
+    title,
+    type: item.type || "category",
+    children: childrenSource.map(normalizeMenuItem).filter(Boolean)
+  };
 }
 
-function isPostInCategory(post, catId) {
-    if (!post || !catId) return false;
-
-    const targetId = normalizeCategoryId(catId);
-
-    if (!targetId || targetId === "home" || targetId === "trang-chu" || targetId === "moi-nhat") {
-        return true;
-    }
-
-    const normalizedPost = normalizePost(post);
-    if (!normalizedPost) return false;
-
-    const postCatId = normalizedPost.categoryId;
-    const postSubCatId = normalizedPost.subCategoryId;
-
-    if (postCatId === targetId || postSubCatId === targetId) {
-        return true;
-    }
-
-    if (
-        normalizeCategoryId(normalizedPost.category) === targetId ||
-        normalizeCategoryId(normalizedPost.subCategory) === targetId
-    ) {
-        return true;
-    }
-
-    const categories = getCategories();
-
-    function findCategory(items, id) {
-        for (const item of items || []) {
-            if (normalizeCategoryId(item.id) === id) return item;
-            const found = findCategory(item.children, id);
-            if (found) return found;
-        }
-        return null;
-    }
-
-    function getAllChildIds(category) {
-        let ids = [];
-        for (const child of category.children || []) {
-            ids.push(normalizeCategoryId(child.id));
-            ids = ids.concat(getAllChildIds(child));
-        }
-        return ids;
-    }
-
-    const targetCategory = findCategory(categories, targetId);
-    if (!targetCategory) return false;
-
-    const childIds = getAllChildIds(targetCategory);
-    if (childIds.length > 0 && (childIds.includes(postCatId) || childIds.includes(postSubCatId))) {
-        return true;
-    }
-
-    return false;
+function flattenMenu(items, parent = null, result = []) {
+  for (const item of items || []) {
+    result.push({ ...item, parent });
+    flattenMenu(item.children || [], item, result);
+  }
+  return result;
 }
 
-function formatDate(value) {
-    if (!value) return "";
+function findMenuItem(value) {
+  const wanted = normalizeId(value);
+  const wantedText = normalizeText(value);
 
-    const time = parseDateToTime(value);
-    if (time === 0) return String(value);
-
-    const date = new Date(time);
-    return date.toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
+  return flattenMenu(allMenu).find(({ id, title }) =>
+    normalizeId(id) === wanted ||
+    normalizeId(title) === wanted ||
+    normalizeText(title) === wantedText
+  ) || null;
 }
 
-function getPostImage(post) {
-    return (
-        post?.thumbnail ||
-        post?.image ||
-        "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop"
-    );
+/* ---------------------------------------------------------
+   CHUẨN HÓA BÀI VIẾT
+   Hỗ trợ nhiều cách đặt tên trường trong posts.json.
+   --------------------------------------------------------- */
+
+function detectCategoryFromUrl(url) {
+  if (!url) return "";
+
+  let pathname = String(url);
+
+  try {
+    pathname = new URL(url, "https://dantri.com.vn").pathname;
+  } catch (_) {}
+
+  const path = slugify(pathname);
+
+  const rules = [
+    ["moi-nhat", ["tin-moi-nhat", "moi-nhat"]],
+    ["the-gioi", ["the-gioi"]],
+    ["quan-su", ["quan-su"]],
+    ["phan-tich", ["phan-tich-binh-luan", "phan-tich"]],
+    ["thoi-su", ["thoi-su"]],
+    ["kinh-doanh", ["kinh-doanh"]],
+    ["bat-dong-san", ["bat-dong-san"]],
+    ["the-thao", ["the-thao"]],
+    ["giao-duc", ["giao-duc"]],
+    ["suc-khoe", ["suc-khoe"]],
+    ["van-hoa", ["van-hoa"]],
+    ["giai-tri", ["giai-tri"]],
+    ["phap-luat", ["phap-luat"]],
+    ["cong-nghe", ["cong-nghe"]],
+    ["doi-song", ["doi-song"]],
+    ["du-lich", ["du-lich"]],
+    ["dan-tri-360", ["dt360", "dan-tri-360"]]
+  ];
+
+  for (const [id, slugs] of rules) {
+    if (slugs.some(slug => path.includes(slug))) return id;
+  }
+
+  return "";
 }
 
-function getExcerpt(post) {
-    return String(post?.excerpt || "")
-        .trim()
-        .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, "")
-        .trim();
+function normalizePost(post, index = 0) {
+  if (!post || typeof post !== "object") return null;
+
+  const title = String(
+    post.title ?? post.name ?? post.headline ?? ""
+  ).trim();
+
+  if (!title) return null;
+
+  const url = String(
+    post.url ?? post.link ?? post.sourceUrl ?? post.source_url ?? ""
+  ).trim();
+
+  const rawCategory = String(
+    post.categoryId ??
+    post.category_id ??
+    post.category ??
+    post.categoryName ??
+    post.category_name ??
+    ""
+  ).trim();
+
+  const rawSubCategory = String(
+    post.subCategoryId ??
+    post.sub_category_id ??
+    post.subCategory ??
+    post.sub_category ??
+    post.subCategoryName ??
+    ""
+  ).trim();
+
+  const detectedCategory = detectCategoryFromUrl(url);
+
+  const categoryItem = findMenuItem(rawCategory);
+  const subCategoryItem = findMenuItem(rawSubCategory);
+
+  let categoryId = categoryItem
+    ? categoryItem.id
+    : normalizeId(rawCategory);
+
+  let subCategoryId = subCategoryItem
+    ? subCategoryItem.id
+    : normalizeId(rawSubCategory);
+
+  if (!categoryId && detectedCategory) {
+    const detectedItem = findMenuItem(detectedCategory);
+    categoryId = detectedItem ? detectedItem.id : detectedCategory;
+  }
+
+  const parentItem = subCategoryItem?.parent;
+
+  if (!categoryId && parentItem) {
+    categoryId = parentItem.id;
+  }
+
+  const content = String(
+    post.content ?? post.description ?? post.summary ?? post.excerpt ?? ""
+  ).trim();
+
+  const image = String(
+    post.image ?? post.thumbnail ?? post.imageUrl ?? post.image_url ?? ""
+  ).trim();
+
+  return {
+    ...post,
+    id: String(post.id ?? post.articleId ?? post.article_id ?? url ?? `post-${index}-${slugify(title)}`),
+    title,
+    url,
+    content,
+    description: String(post.description ?? post.summary ?? content).trim(),
+    image,
+    author: String(post.author ?? post.writer ?? "").trim(),
+    date: String(post.date ?? post.publishedAt ?? post.published_at ?? "").trim(),
+    source: String(post.source ?? "Dân Trí").trim(),
+    category: String(post.category ?? categoryItem?.title ?? rawCategory ?? ""),
+    categoryId,
+    subCategory: String(
+      post.subCategory ?? post.subCategoryName ?? subCategoryItem?.title ?? rawSubCategory ?? ""
+    ),
+    subCategoryId
+  };
 }
 
-function sortPostsByDate(posts) {
-    return [...posts].sort((a, b) => {
-        const timeA = parseDateToTime(a.publishedAt);
-        const timeB = parseDateToTime(b.publishedAt);
+/* ---------------------------------------------------------
+   LỌC BÀI VIẾT THEO CHUYÊN MỤC
+   --------------------------------------------------------- */
 
-        if (timeA === timeB) {
-            return String(b.id || "").localeCompare(String(a.id || ""));
-        }
+function isPostInCategory(postInput, categoryValue) {
+  const post = normalizePost(postInput);
+  if (!post) return false;
 
-        return timeB - timeA;
-    });
-}
+  const selected = findMenuItem(categoryValue);
+  const selectedId = selected
+    ? normalizeId(selected.id)
+    : normalizeId(categoryValue);
 
+  if (!selectedId || selectedId === "home" || selectedId === "trang-chu") {
+    return true;
+  }
 
-/* =========================================
-   3. QUẢN LÝ LOCALSTORAGE
-========================================= */
+  const categoryId = normalizeId(post.categoryId || post.category);
+  const subCategoryId = normalizeId(post.subCategoryId || post.subCategory);
 
-function getCategories() {
-    let storedMenu = [];
+  // Bài thuộc trực tiếp chuyên mục đang chọn.
+  if (categoryId === selectedId || subCategoryId === selectedId) {
+    return true;
+  }
 
-    try {
-        const raw = localStorage.getItem("categories");
-
-        if (raw) {
-            const data = JSON.parse(raw);
-            const menu = Array.isArray(data) ? data : data?.menu;
-
-            if (Array.isArray(menu)) {
-                storedMenu = menu
-                    .map(normalizeMenuItem)
-                    .filter(Boolean);
-            }
-        }
-    } catch (error) {
-        console.warn("Không đọc được categories:", error);
+  // Nếu chọn chuyên mục cha, lấy bài của cả các chuyên mục con.
+  if (selected && selected.children && selected.children.length) {
+    const childIds = selected.children.map(child => normalizeId(child.id));
+    if (childIds.includes(categoryId) || childIds.includes(subCategoryId)) {
+      return true;
     }
+  }
 
-    const defaultMenu = DEFAULT_MENU
-        .map(normalizeMenuItem)
-        .filter(Boolean);
+  // Nếu chọn chuyên mục con, kiểm tra bài có khai báo đúng chuyên mục cha.
+  if (selected?.parent) {
+    return categoryId === normalizeId(selected.parent.id) &&
+      subCategoryId === selectedId;
+  }
 
-    if (storedMenu.length === 0) {
-        return defaultMenu;
-    }
+  return false;
+}
 
-    return storedMenu.map(item => {
-        const defaultItem = defaultMenu.find(
-            defaultCat =>
-                normalizeCategoryId(defaultCat.id) ===
-                normalizeCategoryId(item.id)
-        );
+/* ---------------------------------------------------------
+   LƯU VÀ ĐỌC DỮ LIỆU
+   --------------------------------------------------------- */
 
-        if (!defaultItem) {
-            return item;
-        }
+function readLocalPosts() {
+  try {
+    const stored = localStorage.getItem(STORAGE_POSTS_KEY);
+    if (!stored) return [];
 
-        const existingChildren = Array.isArray(item.children)
-            ? item.children
-            : [];
+    const parsed = JSON.parse(stored);
+    return getArrayFromJSON(parsed, "posts")
+      .map(normalizePost)
+      .filter(Boolean);
+  } catch (error) {
+    console.warn("Dữ liệu bài viết trong localStorage không hợp lệ.", error);
+    return [];
+  }
+}
 
-        const defaultChildren = Array.isArray(defaultItem.children)
-            ? defaultItem.children
-            : [];
-
-        const mergedChildren = [...existingChildren];
-
-        defaultChildren.forEach(defaultChild => {
-            const exists = mergedChildren.some(child =>
-                normalizeCategoryId(child.id) ===
-                    normalizeCategoryId(defaultChild.id) ||
-                normalizeCategoryId(child.title) ===
-                    normalizeCategoryId(defaultChild.title)
-            );
-
-            if (!exists) {
-                mergedChildren.push(defaultChild);
-            }
-        });
-
-        return {
-            ...defaultItem,
-            ...item,
-            children: mergedChildren
-        };
-    }).concat(
-        defaultMenu.filter(defaultItem =>
-            !storedMenu.some(item =>
-                normalizeCategoryId(item.id) ===
-                normalizeCategoryId(defaultItem.id)
-            )
-        )
-    );
+function saveLocalPosts(posts) {
+  try {
+    localStorage.setItem(STORAGE_POSTS_KEY, JSON.stringify(posts));
+  } catch (error) {
+    console.warn("Không thể lưu bài viết vào localStorage.", error);
+  }
 }
 
 function getPosts() {
-    try {
-        const raw = localStorage.getItem("posts");
-
-        if (raw) {
-            const data = JSON.parse(raw);
-            const posts = Array.isArray(data) ? data : data?.posts;
-
-            if (Array.isArray(posts)) {
-                const normalized = posts
-                    .map(normalizePost)
-                    .filter(Boolean);
-
-                if (normalized.length > 0) return normalized;
-            }
-        }
-    } catch (error) {
-        console.warn("Không đọc được posts:", error);
-    }
-
-    return DEFAULT_POSTS.map(normalizePost).filter(Boolean);
+  return allPosts;
 }
 
-function savePostToStorage(newPost) {
-    const normalizedPost = normalizePost(newPost);
+function mergePosts(filePosts, localPosts) {
+  const map = new Map();
 
-    if (!normalizedPost || !normalizedPost.content.trim()) {
-        throw new Error("Bài viết thiếu tiêu đề hoặc nội dung.");
-    }
+  // Dữ liệu JSON trên GitHub là nguồn chính.
+  for (const post of filePosts) {
+    const normalized = normalizePost(post);
+    if (!normalized) continue;
 
-    // Tự động gắn thời gian hiện tại nếu bài viết cào về thiếu thời gian
-    if (!normalizedPost.publishedAt || parseDateToTime(normalizedPost.publishedAt) === 0) {
-        const now = new Date();
-        const hours = String(now.getHours()).padStart(2, '0');
-        const minutes = String(now.getMinutes()).padStart(2, '0');
-        const day = String(now.getDate()).padStart(2, '0');
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const year = now.getFullYear();
-        normalizedPost.publishedAt = `${hours}:${minutes} ${day}/${month}/${year}`;
-    }
+    const key = normalized.url || normalized.id;
+    map.set(key, normalized);
+  }
 
-    const posts = getPosts();
+  // Giữ bài được thêm bằng công cụ crawler trong trình duyệt.
+  for (const post of localPosts) {
+    const normalized = normalizePost(post);
+    if (!normalized) continue;
 
-    const index = posts.findIndex(
-        post => String(post.id) === String(normalizedPost.id)
-    );
+    const key = normalized.url || normalized.id;
+    if (!map.has(key)) map.set(key, normalized);
+  }
 
-    if (index >= 0) {
-        posts[index] = {
-            ...posts[index],
-            ...normalizedPost
-        };
-    } else {
-        posts.unshift(normalizedPost);
-    }
-
-    try {
-        localStorage.setItem("posts", JSON.stringify(posts));
-    } catch (error) {
-        console.error("Không thể lưu bài viết:", error);
-        throw new Error("Không lưu được dữ liệu vào LocalStorage.");
-    }
-
-    return normalizedPost;
+  return [...map.values()];
 }
 
 async function initDataFromFiles() {
-    if (!localStorage.getItem("categories")) {
-        try {
-            const response = await fetch("./data/menu.json");
+  const [menuData, postsData] = await Promise.all([
+    loadJSON("menu.json"),
+    loadJSON("posts.json")
+  ]);
 
-            if (response.ok) {
-                const data = await response.json();
-                const menu = Array.isArray(data) ? data : data?.menu;
-
-                if (Array.isArray(menu) && menu.length > 0) {
-                    localStorage.setItem(
-                        "categories",
-                        JSON.stringify(menu)
-                    );
-                }
-            }
-        } catch (error) {
-            console.warn("Không tải được menu.json:", error);
-        }
+  if (menuData) {
+    const menuItems = getArrayFromJSON(menuData, "menu");
+    if (menuItems.length) {
+      allMenu = menuItems.map(normalizeMenuItem).filter(Boolean);
     }
+  }
 
-    if (!localStorage.getItem("posts")) {
-        try {
-            const response = await fetch("./data/posts.json");
+  if (!allMenu.length) {
+    allMenu = DEFAULT_MENU.map(normalizeMenuItem).filter(Boolean);
+  }
 
-            if (response.ok) {
-                const data = await response.json();
-                const posts = Array.isArray(data) ? data : data?.posts;
+  const filePosts = getArrayFromJSON(postsData, "posts");
+  const localPosts = readLocalPosts();
 
-                if (Array.isArray(posts) && posts.length > 0) {
-                    localStorage.setItem(
-                        "posts",
-                        JSON.stringify(
-                            posts.map(normalizePost).filter(Boolean)
-                        )
-                    );
-                }
-            }
-        } catch (error) {
-            console.warn("Không tải được posts.json:", error);
-        }
-    }
+  allPosts = mergePosts(
+    filePosts.map(normalizePost).filter(Boolean),
+    localPosts
+  );
 
-    renderNavbar();
-
-    if (
-        window.currentNewsPage !== "crawler" &&
-        window.currentNewsPage !== "article"
-    ) {
-        renderCategory("home");
-    }
+  renderNavbar();
+  renderCategory(currentCategory);
 }
 
+/* ---------------------------------------------------------
+   TÌM CÁC PHẦN TỬ HTML
+   --------------------------------------------------------- */
 
-/* =========================================
-   4. THANH ĐIỀU HƯỚNG
-========================================= */
+function getElement(...selectors) {
+  for (const selector of selectors) {
+    const element = document.querySelector(selector);
+    if (element) return element;
+  }
+  return null;
+}
+
+function escapeHTML(value) {
+  return String(value ?? "").replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  })[char]);
+}
+
+function safeURL(value) {
+  const url = String(value ?? "").trim();
+  if (!url) return "";
+
+  try {
+    const parsed = new URL(url, window.location.href);
+    if (["http:", "https:"].includes(parsed.protocol)) return parsed.href;
+  } catch (_) {}
+
+  return "";
+}
+
+/* ---------------------------------------------------------
+   MENU ĐIỀU HƯỚNG
+   --------------------------------------------------------- */
 
 function renderNavbar() {
-    const categories = getCategories();
-    const navMenuEl = document.getElementById("navbarMenu");
-    const footerCatEl = document.getElementById("footerCategories");
+  const menuContainer = getElement(
+    "#categoryMenu",
+    "#mainMenu",
+    "#navbarMenu",
+    ".category-menu"
+  );
 
-    let navHtml = "";
-    let footerHtml = "";
+  if (!menuContainer) {
+    console.warn("Không tìm thấy phần tử menu trong HTML.");
+    return;
+  }
 
-    categories.forEach(cat => {
-        if (!cat || !cat.id) return;
+  const renderItem = item => {
+    const active = normalizeId(currentCategory) === normalizeId(item.id);
+    const children = item.children || [];
 
-        const idArg = makeClickArg(cat.id);
-        const title = escapeHtml(cat.title || cat.id);
-        const navId = escapeHtml(normalizeCategoryId(cat.id));
-
-        if (Array.isArray(cat.children) && cat.children.length > 0) {
-            const dropdownClass =
-                normalizeCategoryId(cat.id) === "the-gioi"
-                    ? "dropdown-world"
-                    : normalizeCategoryId(cat.id) === "thoi-su"
-                        ? "dropdown-current"
-                        : "";
-
-            let subHtml = `<ul class="dropdown-menu ${dropdownClass}">`;
-
-            cat.children.forEach(child => {
-                if (!child || !child.id) return;
-
-                const childArg = makeClickArg(child.id);
-
-                subHtml += `
-                    <li>
-                        <a href="#"
-                           onclick="event.preventDefault();renderCategory(decodeURIComponent('${childArg}'))">
-                            ${escapeHtml(child.title || child.id)}
-                        </a>
-                    </li>
-                `;
-            });
-
-            subHtml += "</ul>";
-
-            navHtml += `
-                <li class="has-dropdown">
-                    <a href="#"
-                       onclick="event.preventDefault();renderCategory(decodeURIComponent('${idArg}'))"
-                       id="nav-${navId}"
-                       aria-haspopup="true">
-                        ${title} <span aria-hidden="true">▾</span>
-                    </a>
-                    ${subHtml}
-                </li>
-            `;
-        } else {
-            navHtml += `
-                <li>
-                    <a href="#"
-                       onclick="event.preventDefault();renderCategory(decodeURIComponent('${idArg}'))"
-                       id="nav-${navId}">
-                        ${title}
-                    </a>
-                </li>
-            `;
-        }
-
-        footerHtml += `
-            <li>
-                <a href="#"
-                   onclick="event.preventDefault();renderCategory(decodeURIComponent('${idArg}'))">
-                    ${title}
-                </a>
-            </li>
-        `;
-    });
-
-    navHtml += `
-        <li>
-            <a href="#"
-               onclick="event.preventDefault();renderCrawlerPage()"
-               class="btn-crawler">
-                Crawler Page
-            </a>
-        </li>
-    `;
-
-    if (navMenuEl) navMenuEl.innerHTML = navHtml;
-    if (footerCatEl) footerCatEl.innerHTML = footerHtml;
-}
-
-function setActiveNavigation(catId) {
-    document.querySelectorAll(".nav-menu a").forEach(link => {
-        link.classList.remove("active");
-    });
-
-    const targetId = normalizeCategoryId(catId);
-    const activeNav = document.getElementById(`nav-${targetId}`);
-
-    if (activeNav) activeNav.classList.add("active");
-}
-
-
-/* =========================================
-   5. TẠO THẺ BÀI VIẾT
-========================================= */
-
-function createGridHtml(postsList) {
-    if (!Array.isArray(postsList) || postsList.length === 0) {
-        return "<p>Chưa có bài viết để hiển thị.</p>";
-    }
-
-    const featuredLarge = postsList[0];
-    const featuredSmall = postsList.slice(1, 3);
-
-    let html = '<div class="featured-grid">';
-
-    html += `
-        <div class="card-clean"
-             onclick="renderArticleDetail(decodeURIComponent('${makeClickArg(featuredLarge.id)}'))">
-            <img src="${escapeHtml(getPostImage(featuredLarge))}"
-                 class="card-img-large"
-                 alt="${escapeHtml(featuredLarge.title)}"
-                 loading="lazy"
-                 onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800';">
-
-            <div class="card-category-green">
-                ${escapeHtml((featuredLarge.category || "Thời sự").toUpperCase())}
-            </div>
-
-            <h3 class="card-title-large-green">
-                ${escapeHtml(featuredLarge.title)}
-            </h3>
-
-            <p class="card-excerpt-clean">
-                ${escapeHtml(getExcerpt(featuredLarge))}
-            </p>
-
-            <div class="card-time-clean">
-                ${escapeHtml(formatDate(featuredLarge.publishedAt))}
-            </div>
-        </div>
-    `;
-
-    html += '<div class="featured-small-group">';
-
-    featuredSmall.forEach(post => {
-        html += `
-            <div class="card-clean"
-                 onclick="renderArticleDetail(decodeURIComponent('${makeClickArg(post.id)}'))">
-                <img src="${escapeHtml(getPostImage(post))}"
-                     class="card-img-small"
-                     alt="${escapeHtml(post.title)}"
-                     loading="lazy"
-                     onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800';">
-
-                <h4 class="card-title-small-clean">
-                    ${escapeHtml(post.title)}
-                </h4>
-
-                <div class="card-time-clean">
-                    ${escapeHtml(formatDate(post.publishedAt))}
-                </div>
-            </div>
-        `;
-    });
-
-    html += "</div></div>";
-
-    return html;
-}
-
-function createListItemHtml(post) {
     return `
-        <div class="list-item"
-             onclick="renderArticleDetail(decodeURIComponent('${makeClickArg(post.id)}'))">
-            <img src="${escapeHtml(getPostImage(post))}"
-                 class="list-item-img"
-                 alt="${escapeHtml(post.title)}"
-                 loading="lazy"
-                 onerror="this.onerror=null;this.src='https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800';">
-
-            <div class="list-content">
-                <div class="card-category-green">
-                    ${escapeHtml((post.category || "").toUpperCase())}
-                </div>
-
-                <h4 class="list-item-title">
-                    ${escapeHtml(post.title)}
-                </h4>
-
-                <p class="list-item-excerpt">
-                    ${escapeHtml(getExcerpt(post))}
-                </p>
-
-                <div class="list-item-meta">
-                    ${escapeHtml(formatDate(post.publishedAt))}
-                    ${post.author ? " · " + escapeHtml(post.author) : ""}
-                </div>
-            </div>
-        </div>
+      <li class="nav-item ${children.length ? "has-children" : ""}">
+        <a href="#${encodeURIComponent(item.id)}"
+           class="nav-link ${active ? "active" : ""}"
+           data-category="${escapeHTML(item.id)}">
+          ${escapeHTML(item.title)}
+        </a>
+        ${
+          children.length
+            ? `<ul class="submenu">${children.map(renderItem).join("")}</ul>`
+            : ""
+        }
+      </li>
     `;
-}
+  };
 
+  menuContainer.innerHTML = allMenu.map(renderItem).join("");
 
-/* =========================================
-   6. TRANG CHỦ VÀ CHUYÊN MỤC
-========================================= */
+  menuContainer.querySelectorAll("[data-category]").forEach(link => {
+    link.addEventListener("click", event => {
+      event.preventDefault();
+      const category = link.dataset.category || "home";
+      currentCategory = category;
+      currentSearch = "";
 
-function renderCategory(catId = "home") {
-    const app = document.getElementById("appView");
-    if (!app) return;
+      const searchInput = getElement("#searchInput", "#search");
+      if (searchInput) searchInput.value = "";
 
-    let requestedId = normalizeCategoryId(catId);
+      renderNavbar();
+      renderCategory(category);
 
-    if (
-        !requestedId ||
-        requestedId === "home" ||
-        requestedId === "trang-chu"
-    ) {
-        catId = "home";
-        requestedId = "home";
-    }
-
-    window.currentNewsPage = "category";
-
-    const posts = sortPostsByDate(getPosts());
-    setActiveNavigation(catId);
-
-    if (requestedId === "moi-nhat") {
-        let html = '<h2 class="section-title">Tin mới nhất</h2>';
-        html += createGridHtml(posts.slice(0, 3));
-
-        const remaining = posts.slice(3);
-
-        if (remaining.length > 0) {
-            html += '<div class="recent-list">';
-
-            remaining.forEach(post => {
-                html += createListItemHtml(post);
-            });
-
-            html += "</div>";
-        }
-
-        app.innerHTML = html;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-    }
-
-    if (requestedId === "home") {
-        let html = '<h2 class="section-title">Tin mới nhất</h2>';
-
-        html += createGridHtml(posts.slice(0, 3));
-
-        const listPosts = posts.slice(3, 10);
-
-        if (listPosts.length > 0) {
-            html += '<div class="recent-list">';
-
-            listPosts.forEach(post => {
-                html += createListItemHtml(post);
-            });
-
-            html += "</div>";
-        }
-
-        const sectionCategories = [
-            "Thế giới",
-            "Thời sự",
-            "Pháp luật",
-            "Sức khỏe",
-            "Đời sống",
-            "Du lịch",
-            "Kinh doanh",
-            "Bất động sản",
-            "Thể thao"
-        ];
-
-        sectionCategories.forEach(catName => {
-            const catPosts = posts.filter(post =>
-                isPostInCategory(post, catName)
-            );
-
-            if (catPosts.length > 0) {
-                html += `
-                    <div class="category-block">
-                        <h3 class="category-section-title"
-                            onclick="renderCategory(decodeURIComponent('${makeClickArg(normalizeCategoryId(catName))}'))">
-                            ${escapeHtml(catName.toUpperCase())}
-                            <span class="arrow">&gt;</span>
-                        </h3>
-
-                        ${createGridHtml(catPosts)}
-                    </div>
-                `;
-            }
-        });
-
-        app.innerHTML = html;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
-    }
-
-    const categories = getCategories();
-    const allCategories = [];
-
-    categories.forEach(category => {
-        allCategories.push(category);
-
-        if (Array.isArray(category.children)) {
-            allCategories.push(...category.children);
-        }
+      if (window.location.hash !== `#${encodeURIComponent(category)}`) {
+        history.replaceState(null, "", `#${encodeURIComponent(category)}`);
+      }
     });
-
-    const matchedCategory = allCategories.find(category =>
-        normalizeCategoryId(category.id) === requestedId ||
-        normalizeCategoryId(category.title) === requestedId
-    );
-
-    const targetTitle = matchedCategory?.title || String(catId);
-
-    let filteredPosts = posts.filter(post =>
-        isPostInCategory(post, requestedId)
-    );
-
-    if (filteredPosts.length === 0) {
-        const parentCategory = categories.find(parent =>
-            Array.isArray(parent.children) &&
-            parent.children.some(child =>
-                normalizeCategoryId(child.id) === requestedId ||
-                normalizeCategoryId(child.title) === requestedId
-            )
-        );
-
-        if (parentCategory) {
-            filteredPosts = posts.filter(post =>
-                isPostInCategory(post, parentCategory.id)
-            );
-        }
-
-        if (filteredPosts.length === 0) {
-            filteredPosts = posts.slice(0, 10);
-        }
-    }
-
-    let html = `<h2 class="section-title">${escapeHtml(targetTitle)}</h2>`;
-
-    html += createGridHtml(filteredPosts.slice(0, 3));
-
-    const remaining = filteredPosts.slice(3);
-
-    if (remaining.length > 0) {
-        html += '<div class="recent-list" style="margin-top:20px;">';
-
-        remaining.forEach(post => {
-            html += createListItemHtml(post);
-        });
-
-        html += "</div>";
-    }
-
-    app.innerHTML = html;
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
 }
 
+/* ---------------------------------------------------------
+   HIỂN THỊ DANH SÁCH BÀI VIẾT
+   --------------------------------------------------------- */
 
-/* =========================================
-   7. HIỂN THỊ NỘI DUNG BÀI VIẾT
-========================================= */
+function createPostCard(post) {
+  const imageURL = safeURL(post.image);
+  const articleURL = safeURL(post.url);
 
-function renderArticleContent(content) {
-    const source = String(content || "")
-        .replace(/\r\n/g, "\n")
-        .trim();
-
-    if (!source) {
-        return "<p>Nội dung bài viết đang được cập nhật.</p>";
-    }
-
-    const escaped = escapeHtml(source);
-
-    let formatted = escaped.replace(
-        /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
-        (match, label, url) => {
-            const safeUrl = url.replace(/&amp;/g, "&");
-
-            if (!/^https?:\/\//i.test(safeUrl)) return label;
-
-            return `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+  return `
+    <article class="post-card">
+      ${
+        imageURL
+          ? `<a class="post-image-link" href="${articleURL || "#"}" ${articleURL ? 'target="_blank" rel="noopener noreferrer"' : ""}>
+               <img class="post-image" src="${escapeHTML(imageURL)}"
+                    alt="${escapeHTML(post.title)}" loading="lazy"
+                    onerror="this.style.display='none'">
+             </a>`
+          : ""
+      }
+      <div class="post-card-body">
+        ${
+          post.category
+            ? `<p class="post-category">${escapeHTML(post.category)}</p>`
+            : ""
         }
-    );
-
-    formatted = formatted.replace(
-        /\*\*([^*]+)\*\*/g,
-        "<strong>$1</strong>"
-    );
-
-    return formatted
-        .split(/\n{2,}/)
-        .map(paragraph => `<p>${paragraph.replace(/\n/g, "<br>")}</p>`)
-        .join("");
+        <h3 class="post-title">
+          ${
+            articleURL
+              ? `<a href="${escapeHTML(articleURL)}" target="_blank" rel="noopener noreferrer">${escapeHTML(post.title)}</a>`
+              : escapeHTML(post.title)
+          }
+        </h3>
+        ${
+          post.date
+            ? `<p class="post-date">${escapeHTML(post.date)}</p>`
+            : ""
+        }
+        ${
+          post.description
+            ? `<p class="post-description">${escapeHTML(post.description)}</p>`
+            : ""
+        }
+        ${
+          post.author
+            ? `<p class="post-author">Tác giả: ${escapeHTML(post.author)}</p>`
+            : ""
+        }
+      </div>
+    </article>
+  `;
 }
 
-function renderArticleDetail(postId) {
-    const app = document.getElementById("appView");
-    if (!app) return;
+function getFilteredPosts(category) {
+  let posts = getPosts();
 
-    const article = getPosts().find(post =>
-        post && String(post.id) === String(postId)
+  if (category && !["home", "trang-chu"].includes(normalizeId(category))) {
+    posts = posts.filter(post => isPostInCategory(post, category));
+  }
+
+  if (currentSearch) {
+    const keyword = normalizeText(currentSearch);
+    posts = posts.filter(post =>
+      normalizeText(post.title).includes(keyword) ||
+      normalizeText(post.content).includes(keyword) ||
+      normalizeText(post.description).includes(keyword) ||
+      normalizeText(post.category).includes(keyword) ||
+      normalizeText(post.subCategory).includes(keyword)
     );
+  }
 
-    if (!article) {
-        app.innerHTML = `
-            <h2>Bài viết không tồn tại</h2>
-            <button onclick="renderCategory('home')">
-                Quay lại trang chủ
-            </button>
-        `;
-        return;
-    }
+  return posts;
+}
 
-    window.currentNewsPage = "article";
-    setActiveNavigation(article.categoryId || article.category);
+function renderCategory(category = "home") {
+  currentCategory = category || "home";
 
-    const contentHtml = renderArticleContent(article.content);
+  const posts = getFilteredPosts(currentCategory);
 
-    app.innerHTML = `
-        <div class="article-detail">
-            <h1 class="article-title-main">
-                ${escapeHtml(article.title)}
-            </h1>
+  const titleElement = getElement(
+    "#categoryTitle",
+    "#pageTitle",
+    "#sectionTitle"
+  );
 
-            <div class="article-meta-info">
-                <span>
-                    Tác giả:
-                    <b>${escapeHtml(article.author || "Chưa rõ tác giả")}</b>
-                </span>
-                ·
-                <span>
-                    Đăng ngày:
-                    ${escapeHtml(formatDate(article.publishedAt) || "Chưa có thông tin")}
-                </span>
-                ·
-                <span style="color:#008837;font-weight:bold;">
-                    Chuyên mục: ${escapeHtml(article.category || "Chưa phân loại")}
-                </span>
-            </div>
+  const selectedItem = findMenuItem(currentCategory);
+  const title = selectedItem
+    ? selectedItem.title
+    : normalizeId(currentCategory) === "home"
+      ? "Tin mới nhất"
+      : String(currentCategory);
 
-            ${article.excerpt ? `
-                <p class="article-sapo-main">
-                    ${escapeHtml(getExcerpt(article))}
-                </p>
-            ` : ""}
+  if (titleElement) titleElement.textContent = title;
 
-            ${(article.thumbnail || article.image) ? `
-                <img src="${escapeHtml(getPostImage(article))}"
-                     class="detail-main-img"
-                     alt="${escapeHtml(article.title)}"
-                     onerror="this.style.display='none';">
-            ` : ""}
+  const featuredContainer = getElement(
+    "#featuredPosts",
+    "#featuredPost",
+    ".featured-posts"
+  );
 
-            <div class="article-content-body">${contentHtml}</div>
+  const listContainer = getElement(
+    "#postList",
+    "#postsList",
+    "#newsList",
+    "#appView",
+    "#app"
+  );
 
-            ${article.url ? `
-                <p class="article-source-link">
-                    <a href="${escapeHtml(article.url)}"
-                       target="_blank"
-                       rel="noopener noreferrer">
-                        Xem bài viết gốc
-                    </a>
-                </p>
-            ` : ""}
+  if (!listContainer) {
+    console.error(
+      "Không tìm thấy vùng hiển thị bài viết. Hãy kiểm tra index.html có #postList hoặc #appView không."
+    );
+    return;
+  }
 
-            <br>
-            <hr>
-            <br>
+  const isHome = ["home", "trang-chu"].includes(normalizeId(currentCategory));
 
-            <button
-                onclick="renderCategory('home')"
-                style="background:#6c757d;border:none;color:#fff;padding:8px 16px;border-radius:4px;cursor:pointer;">
-                &larr; Quay lại trang chủ
-            </button>
-        </div>
+  if (isHome && featuredContainer) {
+    const featured = posts.slice(0, 3);
+    featuredContainer.innerHTML = featured.map(createPostCard).join("");
+  }
+
+  // Hiển thị toàn bộ bài, không cắt mất bài mới.
+  const listPosts = isHome && featuredContainer
+    ? posts.slice(3)
+    : posts;
+
+  if (!posts.length) {
+    const message = currentSearch
+      ? "Không tìm thấy bài viết phù hợp với từ khóa."
+      : "Chưa có bài viết trong chuyên mục này.";
+
+    if (featuredContainer) featuredContainer.innerHTML = "";
+
+    listContainer.innerHTML = `
+      <div class="empty-state">
+        <p>${escapeHTML(message)}</p>
+      </div>
     `;
+    return;
+  }
 
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  listContainer.innerHTML = listPosts.length
+    ? listPosts.map(createPostCard).join("")
+    : (isHome && featuredContainer
+        ? ""
+        : posts.map(createPostCard).join(""));
 }
 
+/* ---------------------------------------------------------
+   TÌM KIẾM
+   --------------------------------------------------------- */
 
-/* =========================================
-   8. TRANG CRAWLER
-========================================= */
+function setupSearch() {
+  const searchInput = getElement("#searchInput", "#search");
+  const searchForm = getElement("#searchForm");
 
-function renderCrawlerPage() {
-    const app = document.getElementById("appView");
-    if (!app) return;
-
-    window.currentNewsPage = "crawler";
-
-    document.querySelectorAll(".nav-menu a").forEach(element => {
-        element.classList.remove("active");
+  if (searchForm) {
+    searchForm.addEventListener("submit", event => {
+      event.preventDefault();
+      currentSearch = searchInput ? searchInput.value.trim() : "";
+      renderCategory(currentCategory);
     });
+  }
 
-    app.innerHTML = `
-        <div class="crawler-box">
-            <h2 class="section-title">Crawler tin tức</h2>
-
-            <p class="crawler-desc">
-                Nhập URL bài viết trên dantri.com.vn.
-                Nếu không lấy được bài qua proxy, hãy dán mã nguồn HTML vào ô dự phòng.
-            </p>
-
-            <div class="crawl-input-group">
-                <input
-                    type="url"
-                    id="crawlUrl"
-                    placeholder="https://dantri.com.vn/the-gioi/duong-dan-bai-viet.htm">
-
-                <button class="btn-crawl" id="crawlButton" onclick="handleCrawl()">
-                    Crawl
-                </button>
-            </div>
-
-            <details class="fallback-accordion">
-                <summary>► Dự phòng: dán mã nguồn HTML (Ctrl+U)</summary>
-
-                <div class="fallback-content">
-                    <textarea
-                        id="rawHtmlInput"
-                        rows="6"
-                        placeholder="Dán toàn bộ mã nguồn HTML của bài viết vào đây..."></textarea>
-
-                    <button
-                        class="btn-crawl"
-                        style="margin-top:10px;"
-                        onclick="handleCrawlFromHtml()">
-                        Phân tích HTML &amp; Lưu
-                    </button>
-                </div>
-            </details>
-
-            <div id="crawlSuccessAlert" class="alert-success" style="display:none;">
-                Đã cập nhật bài viết vào LocalStorage. Chuyên mục:
-                <span id="alertCatName" style="font-weight:bold;"></span>
-            </div>
-
-            <pre class="json-preview" id="jsonPreview" style="display:none;"></pre>
-
-            <div class="local-storage-section">
-                <h3 class="local-storage-title">Bài mới nhất trong LocalStorage</h3>
-                <div id="localStorageList" class="local-storage-list"></div>
-
-                <button class="btn-reset-data" onclick="resetDefaultData()">
-                    Reset dữ liệu mẫu
-                </button>
-            </div>
-        </div>
-    `;
-
-    renderLocalStorageList();
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      currentSearch = searchInput.value.trim();
+      renderCategory(currentCategory);
+    });
+  }
 }
 
+/* ---------------------------------------------------------
+   KHỞI TẠO WEBSITE
+   --------------------------------------------------------- */
 
-/* =========================================
-   9. HIỂN THỊ DANH SÁCH BÀI ĐÃ LƯU
-========================================= */
-
-function renderLocalStorageList() {
-    const container = document.getElementById("localStorageList");
-    if (!container) return;
-
-    const posts = sortPostsByDate(getPosts());
-
-    if (posts.length === 0) {
-        container.innerHTML = `
-            <p style="padding:10px 0;color:#777;">
-                Chưa có bài viết nào trong LocalStorage.
-            </p>
-        `;
-        return;
-    }
-
-    container.innerHTML = posts.map(post => `
-        <div class="ls-item"
-             onclick="renderArticleDetail(decodeURIComponent('${makeClickArg(post.id)}'))">
-            <span class="ls-title">${escapeHtml(post.title)}</span>
-            <span class="ls-category">${escapeHtml(post.category || "Thời sự")}</span>
-        </div>
-    `).join("");
-}
-
-
-/* =========================================
-   10. CRAWL BÀI VIẾT
-========================================= */
-
-function isValidDantriUrl(url) {
-    try {
-        const parsed = new URL(url);
-
-        return (
-            ["http:", "https:"].includes(parsed.protocol) &&
-            (
-                parsed.hostname === "dantri.com.vn" ||
-                parsed.hostname === "www.dantri.com.vn"
-            )
-        );
-    } catch (error) {
-        return false;
-    }
-}
-
-function showCrawlResult(article) {
-    const savedArticle = savePostToStorage(article);
-
-    const alertBox = document.getElementById("crawlSuccessAlert");
-    const alertCatName = document.getElementById("alertCatName");
-    const jsonPreview = document.getElementById("jsonPreview");
-
-    if (alertCatName) {
-        alertCatName.textContent = savedArticle.category || "Chưa phân loại";
-    }
-
-    if (alertBox) alertBox.style.display = "block";
-
-    if (jsonPreview) {
-        jsonPreview.textContent = JSON.stringify(savedArticle, null, 2);
-        jsonPreview.style.display = "block";
-    }
-
-    renderLocalStorageList();
-
-    return savedArticle;
-}
-
-function validateCrawledArticle(article) {
-    const normalized = normalizePost(article);
-
-    return Boolean(
-        normalized &&
-        normalized.title &&
-        normalized.content.trim() &&
-        normalized.content.trim() !== "Nội dung bài viết..."
-    );
-}
-
-async function handleCrawl() {
-    const urlInput = document.getElementById("crawlUrl")?.value.trim() || "";
-
-    if (!urlInput) {
-        alert("Vui lòng nhập URL bài viết!");
-        return;
-    }
-
-    if (!isValidDantriUrl(urlInput)) {
-        alert("Vui lòng nhập URL bài viết hợp lệ từ dantri.com.vn!");
-        return;
-    }
-
-    const alertBox = document.getElementById("crawlSuccessAlert");
-    const jsonPreview = document.getElementById("jsonPreview");
-    const button = document.getElementById("crawlButton");
-
-    if (alertBox) alertBox.style.display = "none";
-    if (jsonPreview) jsonPreview.style.display = "none";
-
-    if (button) {
-        button.disabled = true;
-        button.textContent = "Đang crawl...";
-    }
-
-    try {
-        if (typeof getArticle !== "function") {
-            alert("Không tìm thấy hàm getArticle trong js/crawler.js!");
-            return;
-        }
-
-        const article = await getArticle(urlInput);
-
-        // Gán URL cho bài viết trước khi kiểm tra để detectCategoryFromUrl nhận diện đúng chuyên mục
-        if (article) {
-            article.url = article.url || urlInput;
-        }
-
-        if (!validateCrawledArticle(article)) {
-            alert(
-                "Chưa lấy được đủ tiêu đề và nội dung.\n\n" +
-                "Hãy mở bài viết Dân Trí, nhấn Ctrl+U, sao chép mã nguồn HTML, " +
-                "dán vào ô dự phòng rồi bấm “Phân tích HTML & Lưu”."
-            );
-            return;
-        }
-
-        showCrawlResult(article);
-        alert("Đã crawl và lưu bài viết thành công!");
-    } catch (error) {
-        console.error("Lỗi khi crawl bài viết:", error);
-        alert(
-            "Không lấy được bài viết tự động.\n" +
-            "Hãy thử chức năng dán mã nguồn HTML dự phòng."
-        );
-    } finally {
-        if (button) {
-            button.disabled = false;
-            button.textContent = "Crawl";
-        }
-    }
-}
-
-
-/* =========================================
-   11. PHÂN TÍCH HTML ĐÃ DÁN
-========================================= */
-
-function handleCrawlFromHtml() {
-    const htmlText =
-        document.getElementById("rawHtmlInput")?.value.trim() || "";
-
-    const urlInput =
-        document.getElementById("crawlUrl")?.value.trim() || "";
-
-    if (!urlInput || !isValidDantriUrl(urlInput)) {
-        alert("Hãy nhập URL bài viết hợp lệ từ dantri.com.vn trước!");
-        return;
-    }
-
-    if (!htmlText) {
-        alert("Vui lòng dán mã nguồn HTML bài viết!");
-        return;
-    }
-
-    if (/^https?:\/\/\S+$/i.test(htmlText)) {
-        alert(
-            "Bạn đang dán URL, không phải mã HTML. " +
-            "Mở bài viết, nhấn Ctrl+U rồi sao chép mã nguồn."
-        );
-        return;
-    }
-
-    if (
-        !/<html[\s>]/i.test(htmlText) &&
-        !/<!doctype/i.test(htmlText) &&
-        !/<head[\s>]/i.test(htmlText)
-    ) {
-        alert(
-            "Nội dung chưa giống mã nguồn HTML. " +
-            "Hãy sao chép mã nguồn trang bằng Ctrl+U."
-        );
-        return;
-    }
-
-    if (typeof parseDantriDom !== "function") {
-        alert("Không tìm thấy hàm parseDantriDom trong js/crawler.js!");
-        return;
-    }
-
-    try {
-        const article = parseDantriDom(htmlText, urlInput);
-
-        // Gán URL trước khi validate để detectCategoryFromUrl phân loại chính xác
-        if (article) {
-            article.url = article.url || urlInput;
-        }
-
-        if (!validateCrawledArticle(article)) {
-            alert(
-                "Đã đọc HTML nhưng chưa tìm được đủ tiêu đề và nội dung. " +
-                "Có thể trang đã chặn truy cập hoặc HTML chưa đầy đủ."
-            );
-            return;
-        }
-
-        showCrawlResult(article);
-        alert("Đã phân tích và lưu bài viết thành công!");
-    } catch (error) {
-        console.error("Lỗi phân tích HTML:", error);
-        alert("Không phân tích được HTML. Hãy kiểm tra mã nguồn đã dán.");
-    }
-}
-
-
-/* =========================================
-   12. RESET DỮ LIỆU MẪU
-========================================= */
-
-function resetDefaultData() {
-    const confirmed = confirm(
-        "Bạn có chắc chắn muốn xóa các bài đã lưu và quay về dữ liệu mẫu?"
-    );
-
-    if (!confirmed) return;
-
-    localStorage.removeItem("posts");
-    localStorage.removeItem("categories");
-
-    window.currentNewsPage = "category";
-
-    // Tải lại menu và bài viết từ file JSON sau khi reset.
-    initDataFromFiles();
-}
-
-
-/* =========================================
-   13. KHỞI CHẠY ỨNG DỤNG
-========================================= */
-
-function initApp() {
+async function initApp() {
+  try {
+    // Có menu mặc định để giao diện không bị phụ thuộc JSON.
+    allMenu = DEFAULT_MENU.map(normalizeMenuItem).filter(Boolean);
     renderNavbar();
-    renderCategory("home");
-    initDataFromFiles();
+
+    setupSearch();
+
+    // Đọc lại dữ liệu menu và bài viết từ JSON.
+    await initDataFromFiles();
+
+    // Nếu người dùng mở URL có hash chuyên mục, hiển thị chuyên mục đó.
+    const hash = decodeURIComponent(window.location.hash.replace(/^#/, ""));
+    if (hash) {
+      const item = findMenuItem(hash);
+      if (item) {
+        currentCategory = item.id;
+        renderNavbar();
+        renderCategory(currentCategory);
+      }
+    }
+
+    console.info(
+      `Website đã khởi tạo: ${allPosts.length} bài viết, ${allMenu.length} chuyên mục cấp đầu.`
+    );
+  } catch (error) {
+    console.error("Lỗi khởi tạo website:", error);
+
+    const container = getElement(
+      "#postList",
+      "#postsList",
+      "#newsList",
+      "#appView",
+      "#app"
+    );
+
+    if (container) {
+      container.innerHTML = `
+        <div class="error-state">
+          <p>Không thể tải dữ liệu website.</p>
+          <p>Hãy kiểm tra Console và các file JSON.</p>
+        </div>
+      `;
+    }
+  }
 }
 
 if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", initApp);
+  document.addEventListener("DOMContentLoaded", initApp);
 } else {
-    initApp();
+  initApp();
 }
