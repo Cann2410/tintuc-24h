@@ -174,12 +174,11 @@ function isPostInCategory(post, catId) {
 
     const targetId = normalizeCategoryId(catId);
 
-    // Trang chủ và chuyên mục Mới nhất
+    // Trang chủ và Mới nhất: hiển thị tất cả bài viết
     if (targetId === "home" || targetId === "moi-nhat") {
         return true;
     }
 
-    // Lấy thông tin chuyên mục của bài viết
     const postCategoryId = normalizeCategoryId(
         post.categoryId ||
         post.category_id ||
@@ -190,53 +189,46 @@ function isPostInCategory(post, catId) {
         ""
     );
 
-    // Khớp trực tiếp với ID chuyên mục
+    // Bài viết thuộc trực tiếp chuyên mục đang chọn
     if (postCategoryId === targetId) {
         return true;
     }
 
-    // Khớp với tên chuyên mục trong menu
     const categories = getCategories();
 
-    function findCategoryById(items, id) {
+    function findCategory(items, id) {
         for (const item of items || []) {
             if (normalizeCategoryId(item.id) === id) {
                 return item;
             }
 
-            const found = findCategoryById(item.children, id);
+            const found = findCategory(item.children, id);
             if (found) return found;
         }
 
         return null;
     }
 
-    const targetCategory = findCategoryById(categories, targetId);
+    function getAllChildIds(category) {
+        let ids = [];
 
-    if (
-        targetCategory &&
-        normalizeCategoryId(
-            post.categoryTitle ||
-            post.categoryName ||
-            post.category ||
-            ""
-        ) === normalizeCategoryId(targetCategory.title)
-    ) {
-        return true;
-    }
-
-    // Nếu đang xem chuyên mục cha, hiển thị cả bài thuộc chuyên mục con
-    if (targetCategory && Array.isArray(targetCategory.children)) {
-        const childIds = targetCategory.children.map(
-            child => normalizeCategoryId(child.id)
-        );
-
-        if (childIds.includes(postCategoryId)) {
-            return true;
+        for (const child of category.children || []) {
+            ids.push(normalizeCategoryId(child.id));
+            ids = ids.concat(getAllChildIds(child));
         }
+
+        return ids;
     }
 
-    return false;
+    // Tìm chuyên mục đang được chọn
+    const targetCategory = findCategory(categories, targetId);
+
+    if (!targetCategory) return false;
+
+    // Nếu là chuyên mục cha, hiển thị bài của tất cả chuyên mục con
+    const childIds = getAllChildIds(targetCategory);
+
+    return childIds.includes(postCategoryId);
 }
 
 
