@@ -168,23 +168,77 @@ function normalizeMenuItem(item) {
     };
 }
 
+
 function isPostInCategory(post, catId) {
     if (!post || !catId) return false;
 
     const targetId = normalizeCategoryId(catId);
 
-    if (!targetId || targetId === "home") return false;
+    // Trang chủ và chuyên mục Mới nhất
+    if (targetId === "home" || targetId === "moi-nhat") {
+        return true;
+    }
 
-    const normalizedPost = normalizePost(post);
-    if (!normalizedPost) return false;
-
-    if (targetId === "moi-nhat") return true;
-
-    return (
-        normalizeCategoryId(normalizedPost.categoryId) === targetId ||
-        normalizeCategoryId(normalizedPost.category) === targetId
+    // Lấy thông tin chuyên mục của bài viết
+    const postCategoryId = normalizeCategoryId(
+        post.categoryId ||
+        post.category_id ||
+        post.categorySlug ||
+        post.category ||
+        post.categoryName ||
+        post.categoryTitle ||
+        ""
     );
+
+    // Khớp trực tiếp với ID chuyên mục
+    if (postCategoryId === targetId) {
+        return true;
+    }
+
+    // Khớp với tên chuyên mục trong menu
+    const categories = getCategories();
+
+    function findCategoryById(items, id) {
+        for (const item of items || []) {
+            if (normalizeCategoryId(item.id) === id) {
+                return item;
+            }
+
+            const found = findCategoryById(item.children, id);
+            if (found) return found;
+        }
+
+        return null;
+    }
+
+    const targetCategory = findCategoryById(categories, targetId);
+
+    if (
+        targetCategory &&
+        normalizeCategoryId(
+            post.categoryTitle ||
+            post.categoryName ||
+            post.category ||
+            ""
+        ) === normalizeCategoryId(targetCategory.title)
+    ) {
+        return true;
+    }
+
+    // Nếu đang xem chuyên mục cha, hiển thị cả bài thuộc chuyên mục con
+    if (targetCategory && Array.isArray(targetCategory.children)) {
+        const childIds = targetCategory.children.map(
+            child => normalizeCategoryId(child.id)
+        );
+
+        if (childIds.includes(postCategoryId)) {
+            return true;
+        }
+    }
+
+    return false;
 }
+
 
 function formatDate(value) {
     if (!value) return "";
