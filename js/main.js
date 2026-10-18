@@ -175,12 +175,13 @@ function normalizeMenuItem(item) {
 }
 
 
+
 function isPostInCategory(post, catId) {
     if (!post || !catId) return false;
 
     const targetId = normalizeCategoryId(catId);
 
-    // Trang chủ và Mới nhất: hiển thị tất cả bài viết
+    // Trang chủ và Mới nhất hiển thị tất cả bài viết
     if (targetId === "home" || targetId === "moi-nhat") {
         return true;
     }
@@ -195,8 +196,19 @@ function isPostInCategory(post, catId) {
         ""
     );
 
-    // Bài viết thuộc trực tiếp chuyên mục đang chọn
-    if (postCategoryId === targetId) {
+    const postSubCategoryId = normalizeCategoryId(
+        post.subCategoryId ||
+        post.sub_category_id ||
+        post.subCategory ||
+        post.subCategoryName ||
+        ""
+    );
+
+    // Bài viết thuộc trực tiếp chuyên mục hoặc chuyên mục con
+    if (
+        postCategoryId === targetId ||
+        postSubCategoryId === targetId
+    ) {
         return true;
     }
 
@@ -226,15 +238,17 @@ function isPostInCategory(post, catId) {
         return ids;
     }
 
-    // Tìm chuyên mục đang được chọn
     const targetCategory = findCategory(categories, targetId);
 
     if (!targetCategory) return false;
 
-    // Nếu là chuyên mục cha, hiển thị bài của tất cả chuyên mục con
+    // Chuyên mục cha hiển thị bài của các chuyên mục con
     const childIds = getAllChildIds(targetCategory);
 
-    return childIds.includes(postCategoryId);
+    return (
+        childIds.includes(postCategoryId) ||
+        childIds.includes(postSubCategoryId)
+    );
 }
 
 
@@ -742,7 +756,7 @@ function renderCategory(catId = "home") {
 
         html += createGridHtml(posts.slice(0, 3));
 
-        const listPosts = posts.slice(3, 10);
+        const listPosts = posts.slice(3);
 
         if (listPosts.length > 0) {
             html += '<div class="recent-list">';
@@ -809,9 +823,9 @@ function renderCategory(catId = "home") {
 
     const targetTitle = matchedCategory?.title || String(catId);
 
-    const filteredPosts = posts.filter(post =>
-        isPostInCategory(post, requestedId)
-    );
+    let filteredPosts = posts.filter(post =>
+    isPostInCategory(post, requestedId)
+);
 
     let html = `<h2 class="section-title">${escapeHtml(targetTitle)}</h2>`;
 
