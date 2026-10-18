@@ -86,6 +86,65 @@ function makeClickArg(value) {
     return encodeURIComponent(String(value ?? ""));
 }
 
+// Hàm tự động đọc URL Dân Trí để lấy đúng Chuyên mục (Pháp luật, Kinh doanh, Sức khỏe...)
+function detectCategoryFromUrl(url) {
+    if (!url) return null;
+    try {
+        const parsed = new URL(url);
+        const pathSegments = parsed.pathname.split('/').filter(Boolean);
+        if (pathSegments.length > 0) {
+            const categorySlug = normalizeCategoryId(pathSegments[0]);
+            
+            const categoryMap = {
+                "the-gioi": { category: "Thế giới", categoryId: "the-gioi" },
+                "thoi-su": { category: "Thời sự", categoryId: "thoi-su" },
+                "phap-luat": { category: "Pháp luật", categoryId: "phap-luat" },
+                "suc-khoe": { category: "Sức khỏe", categoryId: "suc-khoe" },
+                "doi-song": { category: "Đời sống", categoryId: "doi-song" },
+                "du-lich": { category: "Du lịch", categoryId: "du-lich" },
+                "kinh-doanh": { category: "Kinh doanh", categoryId: "kinh-doanh" },
+                "the-thao": { category: "Thể thao", categoryId: "the-thao" },
+                "bat-dong-san": { category: "Bất động sản", categoryId: "bat-dong-san" },
+                "giai-tri": { category: "Giải trí", categoryId: "giai-tri" },
+                "giao-duc": { category: "Giáo dục", categoryId: "giao-duc" }
+            };
+
+            if (categoryMap[categorySlug]) {
+                return categoryMap[categorySlug];
+            }
+        }
+    } catch (e) {
+        console.warn("Không phân tích được URL:", e);
+    }
+    return null;
+}
+
+function parseDateToTime(value) {
+    if (!value) return 0;
+    const str = String(value).trim();
+
+    const isoDate = new Date(str.replace(" ", "T"));
+    if (!Number.isNaN(isoDate.getTime())) {
+        return isoDate.getTime();
+    }
+
+    const match = str.match(/(?:(\d{1,2}):(\d{1,2})\s+)?(\d{1,2})\/(\d{1,2})\/(\d{4})(?:\s*[-–—]?\s*(\d{1,2}):(\d{1,2}))?/);
+    if (match) {
+        const hours = parseInt(match[1] || match[6] || 0, 10);
+        const minutes = parseInt(match[2] || match[7] || 0, 10);
+        const day = parseInt(match[3], 10);
+        const month = parseInt(match[4], 10) - 1;
+        const year = parseInt(match[5], 10);
+
+        const d = new Date(year, month, day, hours, minutes);
+        if (!Number.isNaN(d.getTime())) {
+            return d.getTime();
+        }
+    }
+
+    return 0;
+}
+
 function normalizePost(post) {
     if (!post || typeof post !== "object") return null;
 
@@ -94,20 +153,30 @@ function normalizePost(post) {
 
     if (!title || !id) return null;
 
+    // Tự động nhận diện danh mục từ URL nếu cào về thiếu danh mục
+    const detected = detectCategoryFromUrl(post.url);
+
     const category = String(
         post.category ||
         post.categoryName ||
+        detected?.category ||
         post.categoryId ||
         "Thời sự"
     ).trim();
 
     const categoryId = normalizeCategoryId(
-        post.categoryId || category
+        post.categoryId || detected?.categoryId || category
     );
 
-    // === THÊM 2 DÒNG NÀY ĐỂ BẮT DANH MỤC CON ===
-    const subCategory = String(post.subCategory || post.subCategoryName || "").trim();
-    const subCategoryId = normalizeCategoryId(post.subCategoryId || subCategory);
+    const subCategory = String(
+        post.subCategory ||
+        post.subCategoryName ||
+        ""
+    ).trim();
+
+    const subCategoryId = normalizeCategoryId(
+        post.subCategoryId || subCategory
+    );
 
     return {
         ...post,
@@ -116,8 +185,8 @@ function normalizePost(post) {
         slug: post.slug || id,
         category,
         categoryId,
-        subCategory,    // <-- Thêm dòng này
-        subCategoryId, // <-- Thêm dòng này
+        subCategory,
+        subCategoryId,
         excerpt: String(post.excerpt || "")
             .trim()
             .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, ""),
@@ -130,179 +199,6 @@ function normalizePost(post) {
         source: String(post.source || "dantri.com.vn")
     };
 }
-
-function normalizeMenuItem(item) {
-    if (!item || typeof item !== "object") return null;
-
-    const title = String(
-        item.title || item.name || item.id || ""
-    ).trim();
-
-    const id = normalizeCategoryId(item.id || title);
-
-    if (!title || !id) return null;
-
-    return {
-        ...item,
-        id,
-        title,
-        type: item.type || (id === "home" ? "home" : "category"),
-        children: Array.isArray(item.children)
-            ? item.children
-                .map(child => {
-                    if (!child || typeof child !== "object") return null;
-
-                    const childTitle = String(
-                        child.title || child.name || child.id || ""
-                    ).trim();
-
-                    const childId = normalizeCategoryId(
-                        child.id || childTitle
-                    );
-
-                    if (!childTitle || !childId) return null;
-
-                    return {
-                        ...child,
-                        id: childId,
-                        title: childTitle,
-                        type: child.type || "category"
-                    };
-                })
-                .filter(Boolean)
-            : []
-    };
-}
-
-
-
-function isPostInCategory(post, catId) {
-    if (!post || !catId) return false;
-
-    const targetId = normalizeCategoryId(catId);
-
-    // Trang chủ và Mới nhất hiển thị tất cả bài viết
-    if (targetId === "home" || targetId === "moi-nhat") {
-        return true;
-    }
-
-    const postCategoryId = normalizeCategoryId(
-        post.categoryId ||
-        post.category_id ||
-        post.categorySlug ||
-        post.category ||
-        post.categoryName ||
-        post.categoryTitle ||
-        ""
-    );
-
-    const postSubCategoryId = normalizeCategoryId(
-        post.subCategoryId ||
-        post.sub_category_id ||
-        post.subCategory ||
-        post.subCategoryName ||
-        ""
-    );
-
-    // Bài viết thuộc trực tiếp chuyên mục hoặc chuyên mục con
-    if (
-        postCategoryId === targetId ||
-        postSubCategoryId === targetId
-    ) {
-        return true;
-    }
-
-    const categories = getCategories();
-
-    function findCategory(items, id) {
-        for (const item of items || []) {
-            if (normalizeCategoryId(item.id) === id) {
-                return item;
-            }
-
-            const found = findCategory(item.children, id);
-            if (found) return found;
-        }
-
-        return null;
-    }
-
-    function getAllChildIds(category) {
-        let ids = [];
-
-        for (const child of category.children || []) {
-            ids.push(normalizeCategoryId(child.id));
-            ids = ids.concat(getAllChildIds(child));
-        }
-
-        return ids;
-    }
-
-    const targetCategory = findCategory(categories, targetId);
-
-    if (!targetCategory) return false;
-
-    // Chuyên mục cha hiển thị bài của các chuyên mục con
-    const childIds = getAllChildIds(targetCategory);
-
-    return (
-        childIds.includes(postCategoryId) ||
-        childIds.includes(postSubCategoryId)
-    );
-}
-
-
-function formatDate(value) {
-    if (!value) return "";
-
-    const date = new Date(String(value).replace(" ", "T"));
-
-    if (Number.isNaN(date.getTime())) {
-        return String(value);
-    }
-
-    return date.toLocaleString("vi-VN", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit"
-    });
-}
-
-function getPostImage(post) {
-    return (
-        post?.thumbnail ||
-        post?.image ||
-        "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop"
-    );
-}
-
-// Không tự thêm tiền tố Dân trí vào mô tả.
-function getExcerpt(post) {
-    return String(post?.excerpt || "")
-        .trim()
-        .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, "")
-        .trim();
-}
-
-function sortPostsByDate(posts) {
-    return [...posts].sort((a, b) => {
-        const timeA = a.publishedAt
-            ? new Date(String(a.publishedAt).replace(" ", "T")).getTime()
-            : 0;
-
-        const timeB = b.publishedAt
-            ? new Date(String(b.publishedAt).replace(" ", "T")).getTime()
-            : 0;
-
-        return (
-            (Number.isNaN(timeB) ? 0 : timeB) -
-            (Number.isNaN(timeA) ? 0 : timeA)
-        );
-    });
-}
-
 
 /* =========================================
    3. QUẢN LÝ LOCALSTORAGE
