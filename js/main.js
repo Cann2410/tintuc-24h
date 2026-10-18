@@ -1,5 +1,5 @@
 /* =========================================
-   1. DỮ LIỆU MẪU MẶC ĐỊNH
+   1. DỮ LIỆU MẶC ĐỊNH
 ========================================= */
 
 const DEFAULT_MENU = [
@@ -50,6 +50,8 @@ const DEFAULT_POSTS = [
         author: "Văn Hưng",
         category: "Thời sự",
         categoryId: "thoi-su",
+        subCategory: "Giao thông",
+        subCategoryId: "giao-thong",
         publishedAt: "2026-10-14 23:30",
         source: "dantri.com.vn",
         url: "https://dantri.com.vn/thoi-su/loat-de-xuat-moi.htm"
@@ -58,7 +60,7 @@ const DEFAULT_POSTS = [
 
 
 /* =========================================
-   2. HÀM TIỆN ÍCH
+   2. HÀM TIỆN ÍCH & NORMALIZE
 ========================================= */
 
 function normalizeCategoryId(value) {
@@ -86,7 +88,7 @@ function makeClickArg(value) {
     return encodeURIComponent(String(value ?? ""));
 }
 
-// Hàm tự động đọc URL Dân Trí để lấy đúng Chuyên mục (Pháp luật, Kinh doanh, Sức khỏe...)
+// Nhận diện chuyên mục chính chính xác từ URL Dân Trí
 function detectCategoryFromUrl(url) {
     if (!url) return null;
     try {
@@ -94,7 +96,7 @@ function detectCategoryFromUrl(url) {
         const pathSegments = parsed.pathname.split('/').filter(Boolean);
         if (pathSegments.length > 0) {
             const categorySlug = normalizeCategoryId(pathSegments[0]);
-            
+
             const categoryMap = {
                 "the-gioi": { category: "Thế giới", categoryId: "the-gioi" },
                 "thoi-su": { category: "Thời sự", categoryId: "thoi-su" },
@@ -119,6 +121,7 @@ function detectCategoryFromUrl(url) {
     return null;
 }
 
+// Chuyển ngày tháng dạng chuỗi sang Timestamp để sắp xếp chính xác bài mới nhất
 function parseDateToTime(value) {
     if (!value) return 0;
     const str = String(value).trim();
@@ -153,7 +156,6 @@ function normalizePost(post) {
 
     if (!title || !id) return null;
 
-    // Tự động nhận diện danh mục từ URL nếu cào về thiếu danh mục
     const detected = detectCategoryFromUrl(post.url);
 
     const category = String(
@@ -200,12 +202,155 @@ function normalizePost(post) {
     };
 }
 
+function normalizeMenuItem(item) {
+    if (!item || typeof item !== "object") return null;
+
+    const title = String(
+        item.title || item.name || item.id || ""
+    ).trim();
+
+    const id = normalizeCategoryId(item.id || title);
+
+    if (!title || !id) return null;
+
+    return {
+        ...item,
+        id,
+        title,
+        type: item.type || (id === "home" ? "home" : "category"),
+        children: Array.isArray(item.children)
+            ? item.children
+                .map(child => {
+                    if (!child || typeof child !== "object") return null;
+
+                    const childTitle = String(
+                        child.title || child.name || child.id || ""
+                    ).trim();
+
+                    const childId = normalizeCategoryId(
+                        child.id || childTitle
+                    );
+
+                    if (!childTitle || !childId) return null;
+
+                    return {
+                        ...child,
+                        id: childId,
+                        title: childTitle,
+                        type: child.type || "category"
+                    };
+                })
+                .filter(Boolean)
+            : []
+    };
+}
+
+function isPostInCategory(post, catId) {
+    if (!post || !catId) return false;
+
+    const targetId = normalizeCategoryId(catId);
+
+    if (!targetId || targetId === "home" || targetId === "trang-chu" || targetId === "moi-nhat") {
+        return true;
+    }
+
+    const normalizedPost = normalizePost(post);
+    if (!normalizedPost) return false;
+
+    const postCatId = normalizedPost.categoryId;
+    const postSubCatId = normalizedPost.subCategoryId;
+
+    if (postCatId === targetId || postSubCatId === targetId) {
+        return true;
+    }
+
+    if (
+        normalizeCategoryId(normalizedPost.category) === targetId ||
+        normalizeCategoryId(normalizedPost.subCategory) === targetId
+    ) {
+        return true;
+    }
+
+    const categories = getCategories();
+
+    function findCategory(items, id) {
+        for (const item of items || []) {
+            if (normalizeCategoryId(item.id) === id) return item;
+            const found = findCategory(item.children, id);
+            if (found) return found;
+        }
+        return null;
+    }
+
+    function getAllChildIds(category) {
+        let ids = [];
+        for (const child of category.children || []) {
+            ids.push(normalizeCategoryId(child.id));
+            ids = ids.concat(getAllChildIds(child));
+        }
+        return ids;
+    }
+
+    const targetCategory = findCategory(categories, targetId);
+    if (!targetCategory) return false;
+
+    const childIds = getAllChildIds(targetCategory);
+    if (childIds.length > 0 && (childIds.includes(postCatId) || childIds.includes(postSubCatId))) {
+        return true;
+    }
+
+    return false;
+}
+
+function formatDate(value) {
+    if (!value) return "";
+
+    const time = parseDateToTime(value);
+    if (time === 0) return String(value);
+
+    const date = new Date(time);
+    return date.toLocaleString("vi-VN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function getPostImage(post) {
+    return (
+        post?.thumbnail ||
+        post?.image ||
+        "https://images.unsplash.com/photo-1585829365295-ab7cd400c167?w=800&auto=format&fit=crop"
+    );
+}
+
+function getExcerpt(post) {
+    return String(post?.excerpt || "")
+        .trim()
+        .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, "")
+        .trim();
+}
+
+function sortPostsByDate(posts) {
+    return [...posts].sort((a, b) => {
+        const timeA = parseDateToTime(a.publishedAt);
+        const timeB = parseDateToTime(b.publishedAt);
+
+        if (timeA === timeB) {
+            return String(b.id || "").localeCompare(String(a.id || ""));
+        }
+
+        return timeB - timeA;
+    });
+}
+
+
 /* =========================================
    3. QUẢN LÝ LOCALSTORAGE
 ========================================= */
 
-// Sửa: luôn giữ các mục con mặc định khi menu cũ trong
-// LocalStorage chưa có children hoặc còn thiếu mục con.
 function getCategories() {
     let storedMenu = [];
 
@@ -253,7 +398,6 @@ function getCategories() {
             ? defaultItem.children
             : [];
 
-        // Giữ nguyên mục con hiện có, bổ sung mục con còn thiếu.
         const mergedChildren = [...existingChildren];
 
         defaultChildren.forEach(defaultChild => {
@@ -312,6 +456,17 @@ function savePostToStorage(newPost) {
 
     if (!normalizedPost || !normalizedPost.content.trim()) {
         throw new Error("Bài viết thiếu tiêu đề hoặc nội dung.");
+    }
+
+    // Tự động gắn thời gian hiện tại nếu bài viết cào về thiếu thời gian
+    if (!normalizedPost.publishedAt || parseDateToTime(normalizedPost.publishedAt) === 0) {
+        const now = new Date();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        normalizedPost.publishedAt = `${hours}:${minutes} ${day}/${month}/${year}`;
     }
 
     const posts = getPosts();
@@ -420,9 +575,7 @@ function renderNavbar() {
                         ? "dropdown-current"
                         : "";
 
-            let subHtml = `
-                <ul class="dropdown-menu ${dropdownClass}">
-            `;
+            let subHtml = `<ul class="dropdown-menu ${dropdownClass}">`;
 
             cat.children.forEach(child => {
                 if (!child || !child.id) return;
@@ -652,7 +805,7 @@ function renderCategory(catId = "home") {
 
         html += createGridHtml(posts.slice(0, 3));
 
-        const listPosts = posts.slice(3);
+        const listPosts = posts.slice(3, 10);
 
         if (listPosts.length > 0) {
             html += '<div class="recent-list">';
@@ -720,34 +873,30 @@ function renderCategory(catId = "home") {
     const targetTitle = matchedCategory?.title || String(catId);
 
     let filteredPosts = posts.filter(post =>
-    isPostInCategory(post, requestedId)
-);
+        isPostInCategory(post, requestedId)
+    );
 
-    let html = `<h2 class="section-title">${escapeHtml(targetTitle)}</h2>`;
-
-    // Cơ chế dự phòng: Nếu danh mục con chưa có bài, lấy bài từ danh mục cha hoặc tin mới nhất
     if (filteredPosts.length === 0) {
-        // Tìm danh mục cha chứa danh mục con này
         const parentCategory = categories.find(parent =>
             Array.isArray(parent.children) &&
-            parent.children.some(child => 
-                normalizeCategoryId(child.id) === requestedId || 
+            parent.children.some(child =>
+                normalizeCategoryId(child.id) === requestedId ||
                 normalizeCategoryId(child.title) === requestedId
             )
         );
 
         if (parentCategory) {
-            // Lấy toàn bộ bài viết của danh mục cha
-            filteredPosts = posts.filter(post => 
+            filteredPosts = posts.filter(post =>
                 isPostInCategory(post, parentCategory.id)
             );
         }
 
-        // Nếu danh mục cha vẫn trống, lấy  bài viết mới nhất toàn trang
         if (filteredPosts.length === 0) {
             filteredPosts = posts.slice(0, 10);
         }
     }
+
+    let html = `<h2 class="section-title">${escapeHtml(targetTitle)}</h2>`;
 
     html += createGridHtml(filteredPosts.slice(0, 3));
 
@@ -1081,6 +1230,11 @@ async function handleCrawl() {
 
         const article = await getArticle(urlInput);
 
+        // Gán URL cho bài viết trước khi kiểm tra để detectCategoryFromUrl nhận diện đúng chuyên mục
+        if (article) {
+            article.url = article.url || urlInput;
+        }
+
         if (!validateCrawledArticle(article)) {
             alert(
                 "Chưa lấy được đủ tiêu đề và nội dung.\n\n" +
@@ -1089,8 +1243,6 @@ async function handleCrawl() {
             );
             return;
         }
-
-        article.url = article.url || urlInput;
 
         showCrawlResult(article);
         alert("Đã crawl và lưu bài viết thành công!");
@@ -1158,6 +1310,11 @@ function handleCrawlFromHtml() {
     try {
         const article = parseDantriDom(htmlText, urlInput);
 
+        // Gán URL trước khi validate để detectCategoryFromUrl phân loại chính xác
+        if (article) {
+            article.url = article.url || urlInput;
+        }
+
         if (!validateCrawledArticle(article)) {
             alert(
                 "Đã đọc HTML nhưng chưa tìm được đủ tiêu đề và nội dung. " +
@@ -1165,8 +1322,6 @@ function handleCrawlFromHtml() {
             );
             return;
         }
-
-        article.url = article.url || urlInput;
 
         showCrawlResult(article);
         alert("Đã phân tích và lưu bài viết thành công!");
