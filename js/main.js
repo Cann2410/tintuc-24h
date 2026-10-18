@@ -105,6 +105,10 @@ function normalizePost(post) {
         post.categoryId || category
     );
 
+    // === THÊM 2 DÒNG NÀY ĐỂ BẮT DANH MỤC CON ===
+    const subCategory = String(post.subCategory || post.subCategoryName || "").trim();
+    const subCategoryId = normalizeCategoryId(post.subCategoryId || subCategory);
+
     return {
         ...post,
         id,
@@ -112,6 +116,8 @@ function normalizePost(post) {
         slug: post.slug || id,
         category,
         categoryId,
+        subCategory,    // <-- Thêm dòng này
+        subCategoryId, // <-- Thêm dòng này
         excerpt: String(post.excerpt || "")
             .trim()
             .replace(/^(\(Dân trí\)|Dân trí)\s*[-–—]\s*/i, ""),
@@ -809,16 +815,28 @@ function renderCategory(catId = "home") {
 
     let html = `<h2 class="section-title">${escapeHtml(targetTitle)}</h2>`;
 
+    // Cơ chế dự phòng: Nếu danh mục con chưa có bài, lấy bài từ danh mục cha hoặc tin mới nhất
     if (filteredPosts.length === 0) {
-        html += `
-            <p style="margin-top:15px;">
-                Chưa có bài viết nào trong chuyên mục này.
-            </p>
-        `;
+        // Tìm danh mục cha chứa danh mục con này
+        const parentCategory = categories.find(parent =>
+            Array.isArray(parent.children) &&
+            parent.children.some(child => 
+                normalizeCategoryId(child.id) === requestedId || 
+                normalizeCategoryId(child.title) === requestedId
+            )
+        );
 
-        app.innerHTML = html;
-        window.scrollTo({ top: 0, behavior: "smooth" });
-        return;
+        if (parentCategory) {
+            // Lấy toàn bộ bài viết của danh mục cha
+            filteredPosts = posts.filter(post => 
+                isPostInCategory(post, parentCategory.id)
+            );
+        }
+
+        // Nếu danh mục cha vẫn trống, lấy  bài viết mới nhất toàn trang
+        if (filteredPosts.length === 0) {
+            filteredPosts = posts.slice(0, 10);
+        }
     }
 
     html += createGridHtml(filteredPosts.slice(0, 3));
